@@ -304,7 +304,6 @@ namespace Plugin {
     */
     class StreamCollectorInterface : public PluginInterface {
     public:
-
         Type GetType() const final;
         StreamCollectorInterface* IsStreamCollector() final;
 
@@ -317,6 +316,7 @@ namespace Plugin {
         std::chrono::seconds GetMaxCollectDuration() {
             return _max_collect_duration;
         }
+
         void SetMaxMetricsBuffer(int64_t maxMetricsBuffer) {
             _max_metrics_buffer = maxMetricsBuffer;
         }
