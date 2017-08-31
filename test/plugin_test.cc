@@ -84,6 +84,16 @@ TEST_F(PluginTest, PublisherInterfaceWorks) {
   EXPECT_EQ(nullptr, mock.IsProcessor());
 }
 
+TEST_F(PluginTest, StreamCollectorInterfaceWorks)
+{
+  MockStreamCollector mock;
+  EXPECT_EQ(Plugin::StreamCollector, mock.GetType());
+  EXPECT_TRUE(mock.IsStreamCollector() != nullptr);
+  EXPECT_EQ(nullptr, mock.IsCollector());
+  EXPECT_EQ(nullptr, mock.IsProcessor());
+  EXPECT_EQ(nullptr, mock.IsPublisher());
+}
+
 TEST_F(PluginTest, PluginExceptionCtorWorks) {
   auto exception = Plugin::PluginException("nothing serious really");
   EXPECT_EQ(std::string("nothing serious really"), exception.what());
@@ -139,6 +149,7 @@ TEST_F(PluginTest, StartProcessorInvokesExporterAndWaits) {
   EXPECT_EQ(actPlugin, &processor);
   EXPECT_EQ(true, completionCalled);
 }
+
 TEST_F(PluginTest, StartPublisherInvokesExporterAndWaits) {
   MockExporter exporter;
   MockPublisher publisher;
@@ -159,6 +170,29 @@ TEST_F(PluginTest, StartPublisherInvokesExporterAndWaits) {
 
   EXPECT_EQ("average", actMeta->name);
   EXPECT_EQ(actPlugin, &publisher);
+  EXPECT_EQ(true, completionCalled);
+}
+
+TEST_F(PluginTest, StartStreamCollectorInvokesExporterAndWaits)
+{
+  MockExporter exporter;
+  MockStreamCollector streamCollector;
+  Plugin::Meta meta(Plugin::Processor, "average", 123);
+  Plugin::PluginInterface *actPlugin;
+  const Plugin::Meta *actMeta;
+  bool completionCalled = false;
+  auto reporter = [&](std::shared_ptr<Plugin::PluginInterface> plugin, const Plugin::Meta *meta) {
+    actPlugin = plugin.get();
+    actMeta = meta;
+    return std::async(std::launch::deferred, [&]() { completionCalled |= true; });
+  };
+  ON_CALL(exporter, ExportPlugin(_, _))
+      .WillByDefault(Invoke(reporter));
+  Plugin::LibSetup::exporter_provider = [&] { return unique_ptr<Plugin::PluginExporter, function<void(Plugin::PluginExporter *)>>(&exporter, [](Plugin::PluginExporter *) {}); };
+  Plugin::start_stream_collector(&streamCollector, meta);
+
+  EXPECT_EQ("average", actMeta->name);
+  EXPECT_EQ(actPlugin, &streamCollector);
   EXPECT_EQ(true, completionCalled);
 }
 
